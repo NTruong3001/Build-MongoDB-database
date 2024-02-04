@@ -1,0 +1,161 @@
+
+Câu truy vấn 1: Có bao nhiêu người là Nữ và làm việc nhiều hơn 30 tiếng / tuần ?
+db.users.aggregate([
+  {
+    $lookup: {
+      from: "finances",
+      localField: "finance_id",
+      foreignField: "_id",
+      as: "finance"
+    }
+  },
+  {
+    $match: {
+      gender: " Female",
+      "finance.hours_per_week": { $gt: 30 }
+    }
+  },
+  {
+    $count: "count"
+  }
+]);
+=> count:8048
+Câu truy vấn 2: Có bao nhiêu người ở Mỹ có mức thu nhập > 50K.
+db.users.aggregate([
+  {
+    $lookup: {
+      from: "finances",
+      localField: "finance_id",
+      foreignField: "_id",
+      as: "finance"
+    }
+  },
+  {
+    $match: {
+      native_country: " United-States",
+      "finance.income_bracket": " >50K"
+    }
+  },
+  {
+    $count: "count"
+  }
+]);
+=> count: 7171
+Câu truy vấn 3: Tính tổng số dư tài khoản của những người đang ở Mỹ.
+db.users.aggregate([
+  {
+    $lookup: {
+      from: "finances",
+      localField: "finance_id",
+      foreignField: "_id",
+      as: "finance"
+    }
+  },
+  {
+    $match: {
+      native_country: " United-States"
+    }
+  },
+  {
+    $unwind: "$finance"
+  },
+  {
+    $group: {
+      _id: null,
+      total_balance: { $sum: "$finance.total" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      total_balance: 1
+    }
+  }
+])
+
+=>total_balance: Long("5456803347")
+
+
+
+Câu truy vấn 4: Tính tổng số giờ làm việc một tuần của những người có mức thu nhập <= 50K.
+db.users.aggregate([
+  {
+    $lookup: {
+      from: "finances",
+      localField: "finance_id",
+      foreignField: "_id",
+      as: "finance"
+    }
+  },
+  {
+    $unwind: "$finance"
+  },
+  {
+    $match: {
+      "finance.income_bracket": " <=50K"
+    }
+  },
+  {
+    $lookup: {
+      from: "occupations",
+      localField: "occupation_id",
+      foreignField: "_id",
+      as: "occupation"
+    }
+  },
+  {
+    $unwind: "$occupation"
+  },
+  {
+    $group: {
+      _id: null,
+      total_hours_per_week: { $sum: "$occupation.hours_per_week" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      total_hours_per_week: 1
+    }
+  }
+])
+
+=>total_hours_per_week: 960130
+
+
+Câu truy vấn 5: Tìm những người có tổng số tiền trong tài khoản > 100000 và có số giờ làm việc hàng tuần < 55.
+db.users.aggregate([
+  {
+    $lookup: {
+      from: "finances",
+      localField: "finance_id",
+      foreignField: "_id",
+      as: "finance"
+    }
+  },
+  {
+    $unwind: "$finance"
+  },
+  {
+    $match: {
+      "finance.total": { $gt: 100000 },
+    }
+  },
+  {
+    $lookup: {
+      from: "occupations",
+      localField: "occupation_id",
+      foreignField: "_id",
+      as: "occupation"
+    }
+  },
+  {
+    $unwind: "$occupation"
+  },
+  {
+    $match: {
+      "occupation.hours_per_week": { $lt: 55 }
+    }
+  }
+])
+
